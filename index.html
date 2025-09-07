@@ -5,16 +5,17 @@
   <title>Che Warie D Katering - Receipt Generator</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- PWA Manifest -->
-<link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json">
 
-<!-- Apple PWA Settings -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Receipts">
-<link rel="apple-touch-icon" href="icon-192.png">
+  <!-- Apple PWA Settings -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Receipts">
+  <link rel="apple-touch-icon" href="icon-192.png">
 
-<!-- Theme Color -->
-<meta name="theme-color" content="#4CAF50">
+  <!-- Theme Color -->
+  <meta name="theme-color" content="#4CAF50">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -70,42 +71,50 @@
     /* Generator Layout */
     .container {
       display: flex;
+      flex-direction: column;
       gap: 20px;
-      height: 90vh;
+      height: 100vh;
       overflow: hidden;
+      padding: 10px;
+      box-sizing: border-box;
     }
 
     .form-section {
-      width: 35%;
-      max-height: 95vh;
+      flex: 1;
+      max-height: 100%;
       overflow-y: auto;
       background: white;
       padding: 20px;
       border-radius: 8px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      box-sizing: border-box;
     }
     .receipt-title[data-mode="quotation"] {
       color: #e91e63;
     }
     .receipt-section {
-      width: 65%;
+      flex: 1;
       display: flex;
       justify-content: center;
       align-items: flex-start;
       overflow-y: auto;
       padding: 10px;
+      min-height: 0;
     }
 
     #receipt {
-      width: 210mm !important;
-      min-height: 297mm !important;
+      width: 95vw;
+      max-width: 210mm;
+      min-height: 297mm;
       background: white;
       padding: 25.4mm;
       box-shadow: 0 0 10px rgba(0,0,0,0.3);
       box-sizing: border-box;
-      position: relative;
       font-family: Arial, sans-serif;
       font-size: 10pt;
+      position: relative;
+      margin: 0 auto;
+      transform-origin: top center;
     }
     .receipt-title[data-mode="quotation"] {
     color: #e91e63;
@@ -129,12 +138,22 @@
       background-color: #fff3cd;
       color: #856404;
     }
-    @media (min-height: 1080px) and (min-width: 1920px) {
+    /* Scale down on tall screens to fit A4 */
+    @media (min-height: 1080px) {
       .receipt-section {
-        transform: scale(0.95);
-        transform-origin: top center;
+        flex: 1;
+      }
+      #receipt {
+        transform: scale(0.85);
       }
     }
+
+    @media (min-height: 1440px) {
+      #receipt {
+        transform: scale(1);
+      }
+    }
+
 
     label {
       display: block;
@@ -300,13 +319,13 @@
       width: 48%;
     }
 
-    .payment-shipping {
+    .payment-delivery {
       display: flex;
       justify-content: space-between;
       margin: 12px 0;
     }
 
-    .payment-shipping div {
+    .payment-delivery div {
       text-align: center;
       flex: 1;
     }
@@ -425,6 +444,24 @@
       object-fit: contain;
       margin-bottom: 5px;
     }
+    #catalogueGallery table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    #catalogueGallery th, #catalogueGallery td {
+      padding: 8px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    #catalogueGallery th {
+      background-color: #f2f2f2;
+    }
+    #catalogueGallery button {
+      padding: 4px 6px;
+      margin: 0 2px;
+      font-size: 9pt;
+    }
   </style>
 </head>
 <body>
@@ -462,18 +499,18 @@
             <p><strong>Email:</strong> <span id="rCustomerEmail"></span></p>
           </div>
         </div>
-        <div class="payment-shipping">
+        <div class="payment-delivery">
           <div>
             <p><strong>Payment Method</strong></p>
             <p><span id="rPaymentMethod"></span></p>
           </div>
           <div>
-            <p><strong>Shipping Method</strong></p>
-            <p><span id="rShippingMethod"></span></p>
+            <p><strong>Delivery Method</strong></p>
+            <p><span id="rDeliveryMethod"></span></p>
           </div>
           <div>
-            <p><strong>Shipping Price</strong></p>
-            <p>RM <span id="rShippingPrice">0</span></p>
+            <p><strong>Delivery Price</strong></p>
+            <p>RM <span id="rDeliveryPrice">0</span></p>
           </div>
         </div>
         <table class="items-table">
@@ -491,7 +528,7 @@
         </table>
         <div class="totals">
           <p><strong>Subtotal:</strong> RM <span id="rSubtotal">0</span></p>
-          <p><strong>Shipping:</strong> RM <span id="rShipTotal">0</span></p>
+          <p><strong>Delivery:</strong> RM <span id="rTotal">0</span></p>
           <p class="grand-total"><strong>Total:</strong> RM <span id="rTotal">0</span></p>
         </div>
         <div class="remarks">
@@ -522,8 +559,8 @@
         <button onclick="convertQuotationToReceipt()" id="convertBtn" style="display:none; background: #ff9800; margin-top: 10px;">🔄 Convert to Receipt</button>
         <label>Invoice Date: <input type="date" id="invoiceDate"></label>
         <label>Payment Method: <input type="text" id="paymentMethod"></label>
-        <label>Shipping Method: <input type="text" id="shippingMethod"></label>
-        <label>Shipping Price: <input type="number" id="shippingPrice" value="0" step="0.01"></label>
+        <label>Delivery Method: <input type="text" id="deliveryMethod"></label>
+        <label>Delivery Price: <input type="number" id="deliveryPrice" value="0" step="0.01"></label>
       </details>
       <details open>
         <summary>👤 Bill To</summary>
@@ -650,10 +687,30 @@
 <div id="cataloguePopup">
   <button class="close-btn" onclick="closeCataloguePopup()">Close</button>
   <h3>Product Catalogue</h3>
+  <div style="margin-bottom:15px; display:flex; gap:10px;">
+    <button type="button" id="viewListBtn" onclick="setCatalogueView('list')" title="List View">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+        <path d="M2 2h12a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm0 4h12a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm0 4h12a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1z"/>
+      </svg>
+    </button>
+    <button type="button" id="viewGalleryBtn" onclick="setCatalogueView('gallery')" title="Gallery View">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+        <path d="M0 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2zm1 0a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1H1zm9 10a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2zm1 0v-2h2v2h-2zm0-3a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-2zm-1 0v2H2v-2h7z"/>
+      </svg>
+    </button>
+  </div>
   <label>Search: <input type="text" id="catalogueSearch" oninput="filterCatalogue()" placeholder="Search products..."></label>
+  <label>Filter by Tag:
+    <select id="catalogueTagFilter" onchange="filterCatalogue()">
+      <option value="">All Tags</option>
+    </select>
+  </label>
   <label>Name: <input type="text" id="catalogueName"></label>
   <label>Price: <input type="number" id="cataloguePrice" step="0.01" placeholder="0.00"></label>
   <label>Detail: <textarea id="catalogueDetail" placeholder="E.g. Nasi Kandar, 500g, Spicy option"></textarea></label>
+  <label>Tags (comma-separated): 
+  <input type="text" id="catalogueTags" placeholder="e.g. food, drink, dessert, halal">
+  </label>
   <label>Image (optional): 
     <input type="file" id="catalogueImageFile" accept="image/*" onchange="previewCatalogueImage()">
   </label>
@@ -708,6 +765,9 @@
     document.getElementById("invoiceDate").valueAsDate = new Date();
     document.getElementById("invoiceNo").value = generateInvoiceNumber();
     document.getElementById("catalogueImagePreview").src = "https://via.placeholder.com/100x100?text=No+Image";
+    // Initialize catalogue view
+    setCatalogueView('gallery'); // or 'list'
+    updateTagFilter();
 
     const savedCatalogue = localStorage.getItem("cheWarieCatalogue");
     if (savedCatalogue) {
@@ -888,10 +948,10 @@
       `;
       tbody.appendChild(row);
     });
-    const shipping = parseFloat(document.getElementById("shippingPrice").value) || 0;
+    const delivery = parseFloat(document.getElementById("deliveryPrice").value) || 0;
     document.getElementById("rSubtotal").textContent = subtotal.toFixed(2);
-    document.getElementById("rShipTotal").textContent = shipping.toFixed(2);
-    document.getElementById("rTotal").textContent = (subtotal + shipping).toFixed(2);
+    document.getElementById("rDeliTotal").textContent = delivery.toFixed(2);
+    document.getElementById("rTotal").textContent = (subtotal + delivery).toFixed(2);
     updateReceiptInfo();
   }
 
@@ -903,8 +963,8 @@
     document.getElementById("rCustomerTel").textContent = document.getElementById("customerTel").value || "-";
     document.getElementById("rCustomerEmail").textContent = document.getElementById("customerEmail").value || "-";
     document.getElementById("rPaymentMethod").textContent = document.getElementById("paymentMethod").value || "-";
-    document.getElementById("rShippingMethod").textContent = document.getElementById("shippingMethod").value || "-";
-    document.getElementById("rShippingPrice").textContent = (parseFloat(document.getElementById("shippingPrice").value) || 0).toFixed(2);
+    document.getElementById("rDeliveryMethod").textContent = document.getElementById("deliveryMethod").value || "-";
+    document.getElementById("rDeliveryPrice").textContent = (parseFloat(document.getElementById("deliveryPrice").value) || 0).toFixed(2);
     const remarksText = document.getElementById("remarks").value.trim() || "";
     if (!remarksText) {
       document.getElementById("rRemarks").textContent = "-";
@@ -967,7 +1027,7 @@
       customerName: document.getElementById("customerName").value,
       items: [...items],
       subtotal: document.getElementById("rSubtotal").textContent,
-      shipping: document.getElementById("rShipTotal").textContent,
+      delivery: document.getElementById("rDeliTotal").textContent,
       total: document.getElementById("rTotal").textContent,
       timestamp: new Date().toISOString(),
       docType: document.getElementById("docType").value 
@@ -1415,15 +1475,18 @@
     const price = parseFloat(priceStr);
     const detail = document.getElementById("catalogueDetail").value;
     const image = document.getElementById("catalogueImagePreview").src;
-
+    const tags = document.getElementById("catalogueTags").value
+    .split(',')
+    .map(t => t.trim())
+    .filter(t => t);
     if (!name) return alert("Product name is required.");
     if (!priceStr || isNaN(price) || price < 0) return alert("Valid price is required.");
 
     const index = parseInt(document.getElementById("catalogueEditIndex").value);
     if (index >= 0 && index < catalogue.length) {
-      catalogue[index] = { name, price, detail, image };
+      catalogue[index] = { name, price, detail, image , tags };
     } else {
-      catalogue.push({ name, price, detail, image });
+      catalogue.push({ name, price, detail, image , tags });
     }
 
     saveCatalogueToStorage();
@@ -1481,6 +1544,7 @@
     document.getElementById("catalogueName").value = item.name;
     document.getElementById("cataloguePrice").value = item.price;
     document.getElementById("catalogueDetail").value = item.detail;
+    document.getElementById("catalogueTags").value = item.tags?.join(', ') || '';
     document.getElementById("catalogueImagePreview").src = item.image || "https://via.placeholder.com/100x100?text=No+Image";
     document.getElementById("catalogueImageFile").value = "";
     document.getElementById("catalogueEditIndex").value = index;
@@ -1807,6 +1871,127 @@ function deleteRemarksPreset() {
 
   alert("🗑️ Preset deleted.");
 }
+// === CATALOGUE VIEW & TAGS ===
+let catalogueView = 'gallery'; // default
+
+// Set view: list or gallery
+function setCatalogueView(view) {
+  catalogueView = view;
+  document.getElementById("viewListBtn").style.opacity = view === 'list' ? '1' : '0.6';
+  document.getElementById("viewGalleryBtn").style.opacity = view === 'gallery' ? '1' : '0.6';
+  renderCatalogue();
+}
+
+// Extract all unique tags
+function updateTagFilter() {
+  const select = document.getElementById("catalogueTagFilter");
+  const tags = new Set();
+  catalogue.forEach(item => {
+    if (item.tags && Array.isArray(item.tags)) {
+      item.tags.forEach(t => tags.add(t));
+    }
+  });
+  // Clear options except first
+  while (select.options.length > 1) select.remove(1);
+  Array.from(tags).sort().forEach(tag => {
+    const opt = document.createElement("option");
+    opt.value = tag;
+    opt.textContent = tag;
+    select.appendChild(opt);
+  });
+}
+
+// Enhanced filter + render
+function renderCatalogue() {
+  const gallery = document.getElementById("catalogueGallery");
+  const query = document.getElementById("catalogueSearch").value.toLowerCase();
+  const selectedTag = document.getElementById("catalogueTagFilter").value;
+
+  // Filter catalogue
+  const filtered = catalogue.filter(item => {
+    const matchesSearch = !query || 
+      item.name.toLowerCase().includes(query) || 
+      (item.detail && item.detail.toLowerCase().includes(query));
+    const matchesTag = !selectedTag || 
+      (item.tags && item.tags.includes(selectedTag));
+    return matchesSearch && matchesTag;
+  });
+
+  // Clear
+  gallery.innerHTML = "";
+
+  // Render based on view
+  if (catalogueView === 'list') {
+    const table = document.createElement("table");
+    table.style.width = "100%";
+    table.style.borderCollapse = "collapse";
+    table.innerHTML = `
+      <thead>
+        <tr style="background:#f2f2f2;">
+          <th style="text-align:left;padding:8px;border:1px solid #ddd;">Name</th>
+          <th style="text-align:right;padding:8px;border:1px solid #ddd;">Price</th>
+          <th style="text-align:left;padding:8px;border:1px solid #ddd;">Tags</th>
+          <th style="text-align:center;padding:8px;border:1px solid #ddd;">Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    const tbody = table.querySelector("tbody");
+    filtered.forEach((item, i) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="padding:8px;border:1px solid #ddd;">${item.name}</td>
+        <td style="text-align:right;padding:8px;border:1px solid #ddd;">RM ${item.price.toFixed(2)}</td>
+        <td style="padding:8px;border:1px solid #ddd;">${item.tags?.join(', ') || '-'}</td>
+        <td style="text-align:center;padding:8px;border:1px solid #ddd;">
+          <button onclick="selectCatalogueItem(${i})">Add</button>
+          <button onclick="editCatalogueItem(${i})">Edit</button>
+          <button onclick="deleteCatalogueItem(${i})">Delete</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+    gallery.appendChild(table);
+  } else {
+    // === Gallery View (existing) ===
+    filtered.forEach((item, i) => {
+      const div = document.createElement("div");
+      div.style.cssText = "border:1px solid #ddd;padding:10px;text-align:center;width:140px;border-radius:6px;background:#f9f9f9;";
+      div.innerHTML = `
+        <img src="${item.image || 'https://via.placeholder.com/100x100?text=No+Image'}" alt="${item.name}" width="100" height="100" style="object-fit:contain;margin-bottom:5px;">
+        <p><strong>${item.name}</strong></p>
+        <p>RM ${item.price.toFixed(2)}</p>
+        <p style="font-size:0.8em;color:#666;">${item.tags?.join(', ') || '-'}</p>
+        <button onclick="selectCatalogueItem(${i})">Add</button>
+        <button onclick="editCatalogueItem(${i})">Edit</button>
+        <button onclick="deleteCatalogueItem(${i})">Delete</button>
+      `;
+      gallery.appendChild(div);
+    });
+  }
+}
+
+  // Update filter on search/tag change
+  function filterCatalogue() {
+    renderCatalogue();
+  }
+  function resizeReceipt() {
+  const receipt = document.getElementById("receipt");
+  const receiptSection = document.querySelector(".receipt-section");
+  const containerHeight = receiptSection.clientHeight;
+  const a4HeightInPx = 297 * 3.78; // 297mm × 3.78px/mm ≈ A4 height in pixels
+
+  if (containerHeight < a4HeightInPx) {
+    const scale = containerHeight / a4HeightInPx;
+    receipt.style.transform = `scale(${Math.max(scale * 0.9, 0.6)})`;
+  } else {
+    receipt.style.transform = "scale(1)";
+  }
+}
+
+// Call on load and resize
+window.addEventListener("load", resizeReceipt);
+window.addEventListener("resize", resizeReceipt);
 </script>
 </body>
 </html>
