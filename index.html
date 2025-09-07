@@ -3,17 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <title>Che Warie D Katering - Receipt Generator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- PWA Manifest -->
-  <link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json">
 
-  <!-- Apple PWA Settings -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Receipts">
-  <link rel="apple-touch-icon" href="icon-192.png">
+<!-- Apple PWA Settings -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Receipts">
+<link rel="apple-touch-icon" href="icon-192.png">
 
-  <!-- Theme Color -->
-  <meta name="theme-color" content="#4CAF50">
+<!-- Theme Color -->
+<meta name="theme-color" content="#4CAF50">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -83,7 +84,9 @@
       border-radius: 8px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
-
+    .receipt-title[data-mode="quotation"] {
+      color: #e91e63;
+    }
     .receipt-section {
       width: 65%;
       display: flex;
@@ -515,7 +518,9 @@
         <div style="margin: 10px 0;">
           <strong>Document No:</strong> <span id="docLabel" class="doc-label receipt">Receipt</span><br>
           <input type="text" id="invoiceNo" readonly style="margin-top: 5px; width: 100%;">
-        </div>        
+        </div>
+        <button onclick="convertQuotationToReceipt()" id="convertBtn" style="display:none; background: #ff9800; margin-top: 10px;">🔄 Convert to Receipt</button>
+        <label>Invoice Date: <input type="date" id="invoiceDate"></label>
         <label>Payment Method: <input type="text" id="paymentMethod"></label>
         <label>Shipping Method: <input type="text" id="shippingMethod"></label>
         <label>Shipping Price: <input type="number" id="shippingPrice" value="0" step="0.01"></label>
@@ -548,14 +553,23 @@
         <button id="addBtn" onclick="addItem()">Add Item</button>
         <button type="button" onclick="openCataloguePopup()">Open Product Catalogue</button>
         <div id="itemEditButtons" style="margin-top:10px;">
-          <button onclick="deleteSelectedItem()">Delete Selected Item</button>
+          <button onclick="deleteSelectedItem()"  class="danger-btn">Delete Selected Item</button>
         </div>
       </details>
       <details>
         <summary>📝 Remarks</summary>
-        <label>Remarks:
-          <textarea id="remarks" rows="3" placeholder="Enter any special instructions or notes..."></textarea>
+        <label>Presets:
+          <select id="remarksPresets" onchange="applyRemarksPreset()">
+            <option value="">-- Select Preset --</option>
+          </select>
         </label>
+        <label>Remarks:
+          <textarea id="remarks" rows="5" placeholder="Enter any special instructions or notes..."></textarea>
+        </label>
+        <div style="display:flex; gap:10px;">
+          <button onclick="saveRemarksPreset()" style="font-size:9pt; padding:5px 8px; background:#4CAF50; color:white; border:none; border-radius:4px; flex:1;">💾 Save as Preset</button>
+          <button onclick="deleteRemarksPreset()" style="font-size:9pt; padding:5px 8px; background:#f44336; color:white; border:none; border-radius:4px; flex:1;">🗑️ Delete Selected Preset</button>
+        </div>
       </details>
       <details>
         <summary>📁 Recent Invoices</summary>
@@ -568,10 +582,10 @@
         <button id="deleteInvoiceBtn" class="danger-btn" onclick="deleteSelectedInvoice()" style="display:none;">Delete Selected</button>
         <button onclick="newReceipt()" style="font-size:9pt; padding:5px 8px;">🆕 New Receipt</button>
       </details>
+        <button onclick="convertQuotationToReceipt()" id="convertBtn" style="display:none; background: #ff9800; margin-top: 10px;">🔄 Convert to Receipt</button>
       <div class="actions">
         <button onclick="savePDF()">💾 Save PDF & Auto-Save</button>
         <button onclick="printReceipt()">🖨️ Print Receipt</button>
-        <button onclick="convertQuotationToReceipt()" id="convertBtn" style="display:none; background: #ff9800; margin-top: 10px;">🔄 Convert to Receipt</button>
       </div>
     </div>
   </div>
@@ -610,6 +624,21 @@
       <ul id="allReceiptsList"></ul>
     </details>
 
+    <!-- Charts -->
+    <div style="margin: 20px 0;">
+      <h3>📊 Weekly Sales (Last 7 Days)</h3>
+      <div style="margin: 10px 0;">
+        <canvas id="weeklySalesChart" height="100"></canvas>
+      </div>
+    </div>
+
+    <div style="margin: 20px 0;">
+      <h3>📈 Monthly Sales Trend</h3>
+      <div style="margin: 10px 0;">
+        <canvas id="monthlySalesChart" height="100"></canvas>
+      </div>
+    </div>
+
     <!-- Export Button -->
     <div style="margin-top: 20px; text-align: right;">
       <button onclick="exportDashboardPDF()" style="background: #2192F3; padding: 8px 16px; font-size: 10pt;">📄 Export Dashboard as PDF</button>
@@ -619,7 +648,6 @@
 
 <!-- Catalogue Popup -->
 <div id="cataloguePopup">
-  <input type="hidden" id="catalogueEditIndex" value="-1">
   <button class="close-btn" onclick="closeCataloguePopup()">Close</button>
   <h3>Product Catalogue</h3>
   <label>Search: <input type="text" id="catalogueSearch" oninput="filterCatalogue()" placeholder="Search products..."></label>
@@ -653,10 +681,7 @@
   let customers = [];
   let editCustomerIndex = -1;
   let savedReceipts = [];
-  function initDocType() {
-    document.getElementById("docType").value = "receipt";
-    updateDocType();
-  }
+
   // ========== TABS ==========
   function openTab(evt, tabName) {
     const tabcontent = document.getElementsByClassName("tab-content");
@@ -677,7 +702,11 @@
 
   // ========== LOAD ON STARTUP ==========
   window.onload = () => {
+    initDocType();
+    loadRemarksPresetsFromStorage();
+    loadRemarksPresets();
     document.getElementById("invoiceDate").valueAsDate = new Date();
+    document.getElementById("invoiceNo").value = generateInvoiceNumber();
     document.getElementById("catalogueImagePreview").src = "https://via.placeholder.com/100x100?text=No+Image";
 
     const savedCatalogue = localStorage.getItem("cheWarieCatalogue");
@@ -700,9 +729,6 @@
     renderModifySelect();
     updateReceiptInfo();
     renderCatalogue();
-
-    // ✅ Initialize document type FIRST
-    initDocType();
   };
 
   // ========== CUSTOMER FUNCTIONS ==========
@@ -718,24 +744,24 @@
   }
 
   function loadCustomerFromHistory() {
-  const index = document.getElementById("customerHistory").value;
-  if (index === "") {
-    clearCustomerForm();
-    editCustomerIndex = -1;
-    document.getElementById("saveCustomerBtn").textContent = "Save Customer";
-    document.getElementById("deleteCustomerBtn").style.display = "none";
-  } else {
-    const cust = customers[index];
-    document.getElementById("customerName").value = cust.name;
-    document.getElementById("customerAddress").value = cust.address || "";
-    document.getElementById("customerTel").value = cust.tel || "";
-    document.getElementById("customerEmail").value = cust.email || "";
-    editCustomerIndex = parseInt(index);
-    document.getElementById("saveCustomerBtn").textContent = "Update Customer";
-    document.getElementById("deleteCustomerBtn").style.display = "inline-block";
+    const index = document.getElementById("customerHistory").value;
+    if (index === "") {
+      clearCustomerForm();
+      editCustomerIndex = -1;
+      document.getElementById("saveCustomerBtn").textContent = "Save Customer";
+      document.getElementById("deleteCustomerBtn").style.display = "none";
+    } else {
+      const cust = customers[index];
+      document.getElementById("customerName").value = cust.name;
+      document.getElementById("customerAddress").value = cust.address || "";
+      document.getElementById("customerTel").value = cust.tel || "";
+      document.getElementById("customerEmail").value = cust.email || "";
+      editCustomerIndex = parseInt(index);
+      document.getElementById("saveCustomerBtn").textContent = "Update Customer";
+      document.getElementById("deleteCustomerBtn").style.display = "inline-block";
+    }
+    updateReceiptInfo();
   }
-  updateReceiptInfo(); 
-}
 
   function clearCustomerForm() {
     document.getElementById("customerName").value = "";
@@ -745,26 +771,26 @@
   }
 
   function saveOrUpdateCustomer() {
-  const name = document.getElementById("customerName").value.trim();
-  if (!name) return alert("Customer name is required.");
-
-  const customer = {
-    name: document.getElementById("customerName").value,
-    address: document.getElementById("customerAddress").value,
-    tel: document.getElementById("customerTel").value,
-    email: document.getElementById("customerEmail").value
-  };
-
-  if (editCustomerIndex === -1) {
-    customers.push(customer);
-  } else {
-    customers[editCustomerIndex] = customer;
+    const name = document.getElementById("customerName").value.trim();
+    if (!name) return alert("Customer name is required.");
+    const customer = {
+      name: document.getElementById("customerName").value,
+      address: document.getElementById("customerAddress").value,
+      tel: document.getElementById("customerTel").value,
+      email: document.getElementById("customerEmail").value
+    };
+    if (editCustomerIndex === -1) {
+      customers.push(customer);
+    } else {
+      customers[editCustomerIndex] = customer;
+    }
+    localStorage.setItem("cheWarieCustomers", JSON.stringify(customers));
+    renderCustomerHistory();
+    document.getElementById("customerHistory").value = "";
+    document.getElementById("saveCustomerBtn").textContent = "Save Customer";
+    document.getElementById("deleteCustomerBtn").style.display = "none";
+    editCustomerIndex = -1;
   }
-
-  localStorage.setItem("cheWarieCustomers", JSON.stringify(customers));
-  renderCustomerHistory();
-  updateReceiptInfo(); // ✅ Sync preview
-}
 
   function deleteCustomer() {
     if (editCustomerIndex === -1) return;
@@ -791,29 +817,27 @@
 
   function renderModifySelect() {
     const select = document.getElementById("modifyItemSelect");
-    let options = '<option value="-1">New Item</option>';
+    select.innerHTML = '<option value="-1">New Item</option>';
     items.forEach((item, i) => {
-      options += `<option value="${i}">${item.name} (${item.qty})</option>`;
+      select.innerHTML += `<option value="${i}">${item.name}</option>`;
     });
-    select.innerHTML = options;
   }
 
   function chooseItemToModify() {
     const index = parseInt(document.getElementById("modifyItemSelect").value);
-    if (isNaN(index) || index < 0 || index >= items.length) {
+    if (index === -1) {
       clearItemForm();
       editIndex = -1;
       document.getElementById("addBtn").textContent = "Add Item";
-      return;
+    } else {
+      const item = items[index];
+      document.getElementById("itemName").value = item.name;
+      document.getElementById("itemQty").value = item.qty;
+      document.getElementById("itemPrice").value = item.price;
+      document.getElementById("itemImage").value = item.image || "";
+      editIndex = index;
+      document.getElementById("addBtn").textContent = "Update Item";
     }
-
-    const item = items[index];
-    document.getElementById("itemName").value = item.name;
-    document.getElementById("itemQty").value = item.qty;
-    document.getElementById("itemPrice").value = item.price;
-    document.getElementById("itemImage").value = item.image || "";
-    editIndex = index;
-    document.getElementById("addBtn").textContent = "Update Item";
   }
 
   function deleteSelectedItem() {
@@ -872,42 +896,29 @@
   }
 
   function updateReceiptInfo() {
-  document.getElementById("rInvoiceNo").textContent = document.getElementById("invoiceNo").value || "-";
-  document.getElementById("rInvoiceDate").textContent = document.getElementById("invoiceDate").value || "-";
-  document.getElementById("rCustomerName").textContent = document.getElementById("customerName").value || "-";
-  document.getElementById("rCustomerAddress").textContent = document.getElementById("customerAddress").value || "-";
-  document.getElementById("rCustomerTel").textContent = document.getElementById("customerTel").value || "-";
-  document.getElementById("rCustomerEmail").textContent = document.getElementById("customerEmail").value || "-";
-
-  document.getElementById("rPaymentMethod").textContent = document.getElementById("paymentMethod").value || "-";
-  document.getElementById("rShippingMethod").textContent = document.getElementById("shippingMethod").value || "-";
-  document.getElementById("rShippingPrice").textContent = (parseFloat(document.getElementById("shippingPrice").value) || 0).toFixed(2);
-
-  document.getElementById("rRemarks").textContent = document.getElementById("remarks").value || "-";
-
-  // Update items and totals
-  renderItems();
-}
-
-  document.body.addEventListener("input", function(e) {
-  const id = e.target.id;
-  const watched = [
-    "customerName", "customerAddress", "customerTel", "customerEmail",
-    "paymentMethod", "shippingMethod", "shippingPrice", "remarks",
-    "invoiceNo", "invoiceDate", "docType"
-  ];
-  if (watched.includes(id)) {
-    updateReceiptInfo();
+    document.getElementById("rInvoiceNo").textContent = document.getElementById("invoiceNo").value || "-";
+    document.getElementById("rInvoiceDate").textContent = document.getElementById("invoiceDate").value || "-";
+    document.getElementById("rCustomerName").textContent = document.getElementById("customerName").value || "-";
+    document.getElementById("rCustomerAddress").textContent = document.getElementById("customerAddress").value || "-";
+    document.getElementById("rCustomerTel").textContent = document.getElementById("customerTel").value || "-";
+    document.getElementById("rCustomerEmail").textContent = document.getElementById("customerEmail").value || "-";
+    document.getElementById("rPaymentMethod").textContent = document.getElementById("paymentMethod").value || "-";
+    document.getElementById("rShippingMethod").textContent = document.getElementById("shippingMethod").value || "-";
+    document.getElementById("rShippingPrice").textContent = (parseFloat(document.getElementById("shippingPrice").value) || 0).toFixed(2);
+    const remarksText = document.getElementById("remarks").value.trim() || "";
+    if (!remarksText) {
+      document.getElementById("rRemarks").textContent = "-";
+    } else {
+      const lines = remarksText.split('\n').filter(line => line.trim() !== "");
+      const numberedLines = lines.map((line, i) => `${i + 1}. ${line.trim()}`).join('<br>');
+      document.getElementById("rRemarks").innerHTML = numberedLines;
+    }
   }
-}); // ✅ Fixed: Added closing }
 
-// Also trigger on select changes (for dropdowns)
-document.body.addEventListener("change", function(e) {
-  if (["customerHistory", "docType", "modifyItemSelect"].includes(e.target.id)) {
-    updateReceiptInfo();
-  }
-}); // ✅ Fixed: Added closing }
-  
+  document.querySelectorAll("input, textarea, select").forEach(el => {
+    el.addEventListener("input", updateReceiptInfo);
+  });
+
   // ========== SAVE PDF ==========
   function savePDF() {
     const receipt = document.getElementById("receipt");
@@ -939,33 +950,14 @@ document.body.addEventListener("change", function(e) {
 
   // ========== AUTO-SAVE & RECENT INVOICES ==========
   function newReceipt() {
-  document.getElementById("invoiceDate").valueAsDate = new Date();
-  document.getElementById("customerName").value = "";
-  document.getElementById("customerAddress").value = "";
-  document.getElementById("customerTel").value = "";
-  document.getElementById("customerEmail").value = "";
-  document.getElementById("paymentMethod").value = "";
-  document.getElementById("shippingMethod").value = "";
-  document.getElementById("shippingPrice").value = "";
-  document.getElementById("remarks").value = "";
-  document.getElementById("customerHistory").value = "";
-  document.getElementById("saveCustomerBtn").textContent = "Save Customer";
-  document.getElementById("deleteCustomerBtn").style.display = "none";
-
-  // Reset items
+  document.getElementById("invoiceNo").value = generateInvoiceNumber();
+  clearCustomerForm();
   items = [];
   editIndex = -1;
   renderItems();
   renderModifySelect();
   document.getElementById("addBtn").textContent = "Add Item";
-
-  // Reset document type
-  document.getElementById("docType").value = "receipt";
-  updateDocType(); // This regenerates invoice number and updates UI
-
-  // Clear any old state
-  editCustomerIndex = -1;
-
+  updateReceiptInfo();
   alert("✅ New receipt started with auto-generated invoice number.");
 }
   function saveCurrentReceipt() {
@@ -1031,22 +1023,15 @@ document.body.addEventListener("change", function(e) {
       document.getElementById("saveCustomerBtn").textContent = "Save Customer";
       document.getElementById("deleteCustomerBtn").style.display = "none";
     }
-    // Restore document type
-    if (r.invoiceNo.startsWith("QTN-")) {
-      document.getElementById("docType").value = "quotation";
-    } else {
-      document.getElementById("docType").value = "receipt";
-    }
-    updateDocType(); // This updates label, button, and number
-    items = r.items.map(item => ({...item}));
     // Set document type based on prefix
     if (r.invoiceNo.startsWith("QTN-")) {
       document.getElementById("docType").value = "quotation";
     } else {
       document.getElementById("docType").value = "receipt";
     }
-    // Restore document type
     document.getElementById("docType").value = r.docType || "receipt";
+    items = r.items.map(item => ({...item}));
+    
     updateDocType();
     renderItems();
     renderModifySelect();
@@ -1152,30 +1137,48 @@ document.body.addEventListener("change", function(e) {
 
   // ========== SALES DASHBOARD ==========
   function renderDashboard() {
-    const receipts = JSON.parse(localStorage.getItem("cheWarieReceipts")) || [];
-    if (receipts.length === 0) {
-      document.getElementById("weeklySales").textContent = "RM 0.00";
-      document.getElementById("monthlySales").textContent = "RM 0.00";
-      document.getElementById("totalReceipts").textContent = "0";
-      document.getElementById("topItemsList").innerHTML = "<li>No data</li>";
-      document.getElementById("allReceiptsList").innerHTML = "<li>No receipts</li>";
-      return;
-    }
+  const receipts = JSON.parse(localStorage.getItem("cheWarieReceipts")) || [];
+  if (receipts.length === 0) {
+    document.getElementById("weeklySales").textContent = "RM 0.00";
+    document.getElementById("monthlySales").textContent = "RM 0.00";
+    document.getElementById("totalReceipts").textContent = "0";
+    document.getElementById("topItemsList").innerHTML = "<li>No data</li>";
+    document.getElementById("allReceiptsList").innerHTML = "<li>No receipts</li>";
+
+    // Clear charts if no data
+    if (window.weeklyChart) window.weeklyChart.data.labels = [];
+    if (window.monthlyChart) window.monthlyChart.data.labels = [];
+    if (window.weeklyChart) window.weeklyChart.update();
+    if (window.monthlyChart) window.monthlyChart.update();
+    return;
+  }
 
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
     let weeklySales = 0;
     let monthlySales = 0;
     const itemSales = {};
 
+    // Group by day (for weekly chart)
+    const dailySales = {};
+    // Group by month (for monthly chart)
+    const monthlyData = {};
+
     receipts.forEach(r => {
       const date = new Date(r.timestamp);
       const amount = parseFloat(r.total);
+      const dayStr = date.toLocaleDateString();
+      const monthStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
 
-      if (date >= oneWeekAgo) weeklySales += amount;
-      if (date >= oneMonthAgo) monthlySales += amount;
+      if (date >= oneWeekAgo) {
+        weeklySales += amount;
+        dailySales[dayStr] = (dailySales[dayStr] || 0) + amount;
+      }
+      if (date >= oneMonthAgo) {
+        monthlySales += amount;
+        monthlyData[monthStr] = (monthlyData[monthStr] || 0) + amount;
+      }
 
       r.items.forEach(item => {
         if (!itemSales[item.name]) {
@@ -1185,15 +1188,13 @@ document.body.addEventListener("change", function(e) {
       });
     });
 
-    const topItems = Object.values(itemSales)
-      .sort((a, b) => b.qty - a.qty)
-      .slice(0, 10);
-
+    // Update summary
     document.getElementById("weeklySales").textContent = `RM ${weeklySales.toFixed(2)}`;
     document.getElementById("monthlySales").textContent = `RM ${monthlySales.toFixed(2)}`;
     document.getElementById("totalReceipts").textContent = receipts.length;
 
     // Top Items
+    const topItems = Object.values(itemSales).sort((a, b) => b.qty - a.qty).slice(0, 10);
     const topList = document.getElementById("topItemsList");
     topList.innerHTML = "";
     topItems.forEach(item => {
@@ -1202,15 +1203,93 @@ document.body.addEventListener("change", function(e) {
       topList.appendChild(li);
     });
 
-    // All Receipts
+    // All Receipts (click to load)
     const allList = document.getElementById("allReceiptsList");
     allList.innerHTML = "";
-    [...receipts].reverse().forEach(r => {
+    receipts.slice(-10).reverse().forEach(r => {
       const li = document.createElement("li");
       const date = new Date(r.invoiceDate || r.timestamp).toLocaleDateString();
       li.textContent = `#${r.invoiceNo} — ${r.customerName} (RM ${r.total}) — ${date}`;
-      li.onclick = () => previewReceipt(r);
+      li.onclick = () => loadReceiptForEdit(r);
       allList.appendChild(li);
+    });
+
+    // Prepare data for charts
+    const weekLabels = [];
+    const weekValues = [];
+    const monthLabels = [];
+    const monthValues = [];
+
+    // Sort and fill week chart
+    Object.keys(dailySales)
+      .sort((a, b) => new Date(a) - new Date(b))
+      .forEach(date => {
+        weekLabels.push(new Date(date).toLocaleDateString('en', { weekday: 'short' }));
+        weekValues.push(dailySales[date]);
+      });
+
+    // Fill month chart
+    Object.keys(monthlyData).sort().forEach(month => {
+      const [y, m] = month.split('-');
+      const date = new Date(y, m - 1);
+      monthLabels.push(date.toLocaleDateString('en', { month: 'short', year: '2-digit' }));
+      monthValues.push(monthlyData[month]);
+    });
+
+    // Weekly Sales Chart (Bar)
+    const weeklyCtx = document.getElementById('weeklySalesChart').getContext('2d');
+    if (window.weeklyChart) window.weeklyChart.destroy();
+    window.weeklyChart = new Chart(weeklyCtx, {
+      type: 'bar',
+      data: {
+        labels: weekLabels,
+        datasets: [{
+          label: 'Daily Sales (RM)',
+          data: weekValues,
+          backgroundColor: '#4CAF50',
+          borderColor: '#388E3C',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => `RM ${ctx.raw.toFixed(2)}` } }
+        },
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: 'Sales (RM)' } }
+        }
+      }
+    });
+
+    // Monthly Sales Chart (Line)
+    const monthlyCtx = document.getElementById('monthlySalesChart').getContext('2d');
+    if (window.monthlyChart) window.monthlyChart.destroy();
+    window.monthlyChart = new Chart(monthlyCtx, {
+      type: 'line',
+      data: {
+        labels: monthLabels,
+        datasets: [{
+          label: 'Monthly Sales (RM)',
+          data: monthValues,
+          backgroundColor: 'rgba(33, 144, 243, 0.2)',
+          borderColor: '#2192F3',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => `RM ${ctx.raw.toFixed(2)}` } }
+        },
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: 'Sales (RM)' } }
+        }
+      }
     });
   }
 
@@ -1459,6 +1538,12 @@ document.body.addEventListener("change", function(e) {
   }
   dragElement(document.getElementById("cataloguePopup"));
 
+  // Hidden input for edit index
+  const editIndexInput = document.createElement("input");
+  editIndexInput.type = "hidden";
+  editIndexInput.id = "catalogueEditIndex";
+  editIndexInput.value = "-1";
+  document.getElementById("cataloguePopup").appendChild(editIndexInput);
 
   // === IMPORT / EXPORT FUNCTIONS ===
   function exportCatalogueJSON() {
@@ -1571,18 +1656,17 @@ function updateDocType() {
   const title = document.querySelector(".receipt-title");
   const invoiceNo = document.getElementById("invoiceNo");
 
-  // Update header
+  // Update header text
   title.textContent = type === "receipt" ? "RECEIPT" : "QUOTATION";
+  
+  // Update data attribute for color (optional)
+  if (type === "quotation") {
+    title.setAttribute("data-mode", "quotation");
+  } else {
+    title.removeAttribute("data-mode");
+  }
 
-  // Update label
-  const label = document.getElementById("docLabel");
-  label.textContent = type === "receipt" ? "Receipt" : "Quotation";
-  label.className = `doc-label ${type}`;
-
-  // Show/hide convert button
-  document.getElementById("convertBtn").style.display = type === "quotation" ? "inline-block" : "none";
-
-  // ✅ Generate new number with correct prefix
+  // Generate new number with correct prefix
   const prefix = type === "receipt" ? "INV" : "QTN";
   const now = new Date();
   const year = now.getFullYear();
@@ -1601,10 +1685,27 @@ function updateDocType() {
 
   const newSerial = (maxSerial + 1).toString().padStart(5, '0');
   invoiceNo.value = `${prefix}-${year}-${newSerial}`;
+  // Update label text and class
+  const label = document.getElementById("docLabel");
+  label.textContent = type === "receipt" ? "Receipt" : "Quotation";
+  label.className = `doc-label ${type}`;
 
+  // Show/hide convert button
+  document.getElementById("convertBtn").style.display = type === "quotation" ? "inline-block" : "none";
+  // === SET DEFAULT REMARKS ===
+  const remarksTextarea = document.getElementById("remarks");
+  if (type === "quotation") {
+    remarksTextarea.value = remarksPresets.quotation.join("\n\n");
+  } else {
+    remarksTextarea.value = "";
+  }
   updateReceiptInfo();
+  loadRemarksPresets();
 }
-
+function initDocType() {
+  document.getElementById("docType").value = "receipt";
+  updateDocType();
+}
 // ========== CONVERT QUOTATION TO RECEIPT ==========
 function convertQuotationToReceipt() {
   if (!document.getElementById("invoiceNo").value.startsWith("QTN-")) {
@@ -1623,12 +1724,88 @@ function convertQuotationToReceipt() {
   
   alert(`✅ Converted from ${oldNo} to ${document.getElementById("invoiceNo").value}`);
 }
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js')
-      .then(registration => console.log('SW registered'))
-      .catch(error => console.log('SW registration failed', error));
+// ========== REMARKS PRESETS ==========
+let remarksPresets = {
+  receipt: [],
+  quotation: [
+    "RM50 is needed as a deposit to secure your order slot.",
+    "Balanced from the bill must be settled within 2 days before the date of food delivery.",
+    "Delivery rate may differ from quoted during the delivery day."
+  ]
+};
+
+function loadRemarksPresets() {
+  const type = document.getElementById("docType").value;
+  const select = document.getElementById("remarksPresets");
+  select.innerHTML = '<option value="">-- Select Preset --</option>';
+  const presets = remarksPresets[type] || [];
+  presets.forEach((text, i) => {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = text.length > 50 ? text.substring(0, 47) + "..." : text;
+    select.appendChild(opt);
   });
+}
+
+function applyRemarksPreset() {
+  const type = document.getElementById("docType").value;
+  const index = document.getElementById("remarksPresets").value;
+  if (index === "") return;
+  const preset = remarksPresets[type][index];
+  const textarea = document.getElementById("remarks");
+  textarea.value = preset;
+  updateReceiptInfo();
+}
+
+function saveRemarksPreset() {
+  const type = document.getElementById("docType").value;
+  const text = document.getElementById("remarks").value.trim();
+  if (!text) return alert("Cannot save empty remark as preset.");
+  if (!remarksPresets[type]) remarksPresets[type] = [];
+  if (remarksPresets[type].includes(text)) {
+    return alert("This remark is already in the preset list.");
+  }
+  remarksPresets[type].push(text);
+  saveRemarksPresetsToStorage();
+  loadRemarksPresets();
+  alert("✅ Remark saved as preset.");
+}
+
+function saveRemarksPresetsToStorage() {
+  localStorage.setItem("cheWarieRemarksPresets", JSON.stringify(remarksPresets));
+}
+
+function loadRemarksPresetsFromStorage() {
+  const saved = localStorage.getItem("cheWarieRemarksPresets");
+  if (saved) {
+    remarksPresets = JSON.parse(saved);
+  }
+}
+function deleteRemarksPreset() {
+  const type = document.getElementById("docType").value;
+  const select = document.getElementById("remarksPresets");
+  const index = select.value;
+
+  if (index === "") {
+    return alert("Please select a preset to delete.");
+  }
+
+  const presetText = remarksPresets[type][index];
+  if (!confirm(`Delete this remark preset?\n\n${presetText}`)) {
+    return;
+  }
+
+  remarksPresets[type].splice(index, 1);
+  saveRemarksPresetsToStorage();
+  loadRemarksPresets();
+
+  // Clear textarea if it contains the deleted preset
+  if (document.getElementById("remarks").value === presetText) {
+    document.getElementById("remarks").value = "";
+    updateReceiptInfo();
+  }
+
+  alert("🗑️ Preset deleted.");
 }
 </script>
 </body>
