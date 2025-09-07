@@ -619,6 +619,7 @@
 
 <!-- Catalogue Popup -->
 <div id="cataloguePopup">
+  <input type="hidden" id="catalogueEditIndex" value="-1">
   <button class="close-btn" onclick="closeCataloguePopup()">Close</button>
   <h3>Product Catalogue</h3>
   <label>Search: <input type="text" id="catalogueSearch" oninput="filterCatalogue()" placeholder="Search products..."></label>
@@ -717,24 +718,24 @@
   }
 
   function loadCustomerFromHistory() {
-    const index = document.getElementById("customerHistory").value;
-    if (index === "") {
-      clearCustomerForm();
-      editCustomerIndex = -1;
-      document.getElementById("saveCustomerBtn").textContent = "Save Customer";
-      document.getElementById("deleteCustomerBtn").style.display = "none";
-    } else {
-      const cust = customers[index];
-      document.getElementById("customerName").value = cust.name;
-      document.getElementById("customerAddress").value = cust.address || "";
-      document.getElementById("customerTel").value = cust.tel || "";
-      document.getElementById("customerEmail").value = cust.email || "";
-      editCustomerIndex = parseInt(index);
-      document.getElementById("saveCustomerBtn").textContent = "Update Customer";
-      document.getElementById("deleteCustomerBtn").style.display = "inline-block";
-    }
-    updateReceiptInfo();
+  const index = document.getElementById("customerHistory").value;
+  if (index === "") {
+    clearCustomerForm();
+    editCustomerIndex = -1;
+    document.getElementById("saveCustomerBtn").textContent = "Save Customer";
+    document.getElementById("deleteCustomerBtn").style.display = "none";
+  } else {
+    const cust = customers[index];
+    document.getElementById("customerName").value = cust.name;
+    document.getElementById("customerAddress").value = cust.address || "";
+    document.getElementById("customerTel").value = cust.tel || "";
+    document.getElementById("customerEmail").value = cust.email || "";
+    editCustomerIndex = parseInt(index);
+    document.getElementById("saveCustomerBtn").textContent = "Update Customer";
+    document.getElementById("deleteCustomerBtn").style.display = "inline-block";
   }
+  updateReceiptInfo(); 
+}
 
   function clearCustomerForm() {
     document.getElementById("customerName").value = "";
@@ -744,26 +745,26 @@
   }
 
   function saveOrUpdateCustomer() {
-    const name = document.getElementById("customerName").value.trim();
-    if (!name) return alert("Customer name is required.");
-    const customer = {
-      name: document.getElementById("customerName").value,
-      address: document.getElementById("customerAddress").value,
-      tel: document.getElementById("customerTel").value,
-      email: document.getElementById("customerEmail").value
-    };
-    if (editCustomerIndex === -1) {
-      customers.push(customer);
-    } else {
-      customers[editCustomerIndex] = customer;
-    }
-    localStorage.setItem("cheWarieCustomers", JSON.stringify(customers));
-    renderCustomerHistory();
-    document.getElementById("customerHistory").value = "";
-    document.getElementById("saveCustomerBtn").textContent = "Save Customer";
-    document.getElementById("deleteCustomerBtn").style.display = "none";
-    editCustomerIndex = -1;
+  const name = document.getElementById("customerName").value.trim();
+  if (!name) return alert("Customer name is required.");
+
+  const customer = {
+    name: document.getElementById("customerName").value,
+    address: document.getElementById("customerAddress").value,
+    tel: document.getElementById("customerTel").value,
+    email: document.getElementById("customerEmail").value
+  };
+
+  if (editCustomerIndex === -1) {
+    customers.push(customer);
+  } else {
+    customers[editCustomerIndex] = customer;
   }
+
+  localStorage.setItem("cheWarieCustomers", JSON.stringify(customers));
+  renderCustomerHistory();
+  updateReceiptInfo(); // ✅ Sync preview
+}
 
   function deleteCustomer() {
     if (editCustomerIndex === -1) return;
@@ -790,27 +791,29 @@
 
   function renderModifySelect() {
     const select = document.getElementById("modifyItemSelect");
-    select.innerHTML = '<option value="-1">New Item</option>';
+    let options = '<option value="-1">New Item</option>';
     items.forEach((item, i) => {
-      select.innerHTML += `<option value="${i}">${item.name}</option>`;
+      options += `<option value="${i}">${item.name} (${item.qty})</option>`;
     });
+    select.innerHTML = options;
   }
 
   function chooseItemToModify() {
     const index = parseInt(document.getElementById("modifyItemSelect").value);
-    if (index === -1) {
+    if (isNaN(index) || index < 0 || index >= items.length) {
       clearItemForm();
       editIndex = -1;
       document.getElementById("addBtn").textContent = "Add Item";
-    } else {
-      const item = items[index];
-      document.getElementById("itemName").value = item.name;
-      document.getElementById("itemQty").value = item.qty;
-      document.getElementById("itemPrice").value = item.price;
-      document.getElementById("itemImage").value = item.image || "";
-      editIndex = index;
-      document.getElementById("addBtn").textContent = "Update Item";
+      return;
     }
+
+    const item = items[index];
+    document.getElementById("itemName").value = item.name;
+    document.getElementById("itemQty").value = item.qty;
+    document.getElementById("itemPrice").value = item.price;
+    document.getElementById("itemImage").value = item.image || "";
+    editIndex = index;
+    document.getElementById("addBtn").textContent = "Update Item";
   }
 
   function deleteSelectedItem() {
@@ -869,22 +872,42 @@
   }
 
   function updateReceiptInfo() {
-    document.getElementById("rInvoiceNo").textContent = document.getElementById("invoiceNo").value || "-";
-    document.getElementById("rInvoiceDate").textContent = document.getElementById("invoiceDate").value || "-";
-    document.getElementById("rCustomerName").textContent = document.getElementById("customerName").value || "-";
-    document.getElementById("rCustomerAddress").textContent = document.getElementById("customerAddress").value || "-";
-    document.getElementById("rCustomerTel").textContent = document.getElementById("customerTel").value || "-";
-    document.getElementById("rCustomerEmail").textContent = document.getElementById("customerEmail").value || "-";
-    document.getElementById("rPaymentMethod").textContent = document.getElementById("paymentMethod").value || "-";
-    document.getElementById("rShippingMethod").textContent = document.getElementById("shippingMethod").value || "-";
-    document.getElementById("rShippingPrice").textContent = (parseFloat(document.getElementById("shippingPrice").value) || 0).toFixed(2);
-    document.getElementById("rRemarks").textContent = document.getElementById("remarks").value || "-";
+  document.getElementById("rInvoiceNo").textContent = document.getElementById("invoiceNo").value || "-";
+  document.getElementById("rInvoiceDate").textContent = document.getElementById("invoiceDate").value || "-";
+  document.getElementById("rCustomerName").textContent = document.getElementById("customerName").value || "-";
+  document.getElementById("rCustomerAddress").textContent = document.getElementById("customerAddress").value || "-";
+  document.getElementById("rCustomerTel").textContent = document.getElementById("customerTel").value || "-";
+  document.getElementById("rCustomerEmail").textContent = document.getElementById("customerEmail").value || "-";
+
+  document.getElementById("rPaymentMethod").textContent = document.getElementById("paymentMethod").value || "-";
+  document.getElementById("rShippingMethod").textContent = document.getElementById("shippingMethod").value || "-";
+  document.getElementById("rShippingPrice").textContent = (parseFloat(document.getElementById("shippingPrice").value) || 0).toFixed(2);
+
+  document.getElementById("rRemarks").textContent = document.getElementById("remarks").value || "-";
+
+  // Update items and totals
+  renderItems();
+}
+
+  document.body.addEventListener("input", function(e) {
+  const id = e.target.id;
+  const watched = [
+    "customerName", "customerAddress", "customerTel", "customerEmail",
+    "paymentMethod", "shippingMethod", "shippingPrice", "remarks",
+    "invoiceNo", "invoiceDate", "docType"
+  ];
+  if (watched.includes(id)) {
+    updateReceiptInfo();
   }
+}); // ✅ Fixed: Added closing }
 
-  document.querySelectorAll("input, textarea, select").forEach(el => {
-    el.addEventListener("input", updateReceiptInfo);
-  });
-
+// Also trigger on select changes (for dropdowns)
+document.body.addEventListener("change", function(e) {
+  if (["customerHistory", "docType", "modifyItemSelect"].includes(e.target.id)) {
+    updateReceiptInfo();
+  }
+}); // ✅ Fixed: Added closing }
+  
   // ========== SAVE PDF ==========
   function savePDF() {
     const receipt = document.getElementById("receipt");
@@ -916,14 +939,33 @@
 
   // ========== AUTO-SAVE & RECENT INVOICES ==========
   function newReceipt() {
-  document.getElementById("invoiceNo").value = generateInvoiceNumber();
-  clearCustomerForm();
+  document.getElementById("invoiceDate").valueAsDate = new Date();
+  document.getElementById("customerName").value = "";
+  document.getElementById("customerAddress").value = "";
+  document.getElementById("customerTel").value = "";
+  document.getElementById("customerEmail").value = "";
+  document.getElementById("paymentMethod").value = "";
+  document.getElementById("shippingMethod").value = "";
+  document.getElementById("shippingPrice").value = "";
+  document.getElementById("remarks").value = "";
+  document.getElementById("customerHistory").value = "";
+  document.getElementById("saveCustomerBtn").textContent = "Save Customer";
+  document.getElementById("deleteCustomerBtn").style.display = "none";
+
+  // Reset items
   items = [];
   editIndex = -1;
   renderItems();
   renderModifySelect();
   document.getElementById("addBtn").textContent = "Add Item";
-  updateReceiptInfo();
+
+  // Reset document type
+  document.getElementById("docType").value = "receipt";
+  updateDocType(); // This regenerates invoice number and updates UI
+
+  // Clear any old state
+  editCustomerIndex = -1;
+
   alert("✅ New receipt started with auto-generated invoice number.");
 }
   function saveCurrentReceipt() {
@@ -1417,12 +1459,6 @@
   }
   dragElement(document.getElementById("cataloguePopup"));
 
-  // Hidden input for edit index
-  const editIndexInput = document.createElement("input");
-  editIndexInput.type = "hidden";
-  editIndexInput.id = "catalogueEditIndex";
-  editIndexInput.value = "-1";
-  document.getElementById("cataloguePopup").appendChild(editIndexInput);
 
   // === IMPORT / EXPORT FUNCTIONS ===
   function exportCatalogueJSON() {
@@ -1587,13 +1623,13 @@ function convertQuotationToReceipt() {
   
   alert(`✅ Converted from ${oldNo} to ${document.getElementById("invoiceNo").value}`);
 }
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./service-worker.js')
-        .then(registration => console.log('SW registered'))
-        .catch(error => console.log('SW registration failed', error));
-    });
-  }
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(registration => console.log('SW registered'))
+      .catch(error => console.log('SW registration failed', error));
+  });
+}
 </script>
 </body>
 </html>
