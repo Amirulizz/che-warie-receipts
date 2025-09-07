@@ -62,7 +62,15 @@
       justify-content: center;
       gap: 8px;
     }
-
+    /* Adjust padding in desktop mode */
+    .container:not(.phone-mode) .tab-btn {
+      padding: 10px 16px; /* Half padding */
+    }
+    .container:not(.phone-mode) .tab-btn {
+      padding: 10px 16px;
+      font-size: 12pt;
+      gap: 6px;
+    }
     .tab-btn:hover {
       background-color: #a7a7a7;
     }
@@ -94,7 +102,10 @@
       padding: 10px;
       box-sizing: border-box;
     }
-
+    /* Desktop Mode: Half-height tabs */
+    .container:not(.phone-mode) .tabs {
+      height: 40px;
+    }
     /* Edit Form - Improved Readability */
     .form-section {
       flex: 1;
