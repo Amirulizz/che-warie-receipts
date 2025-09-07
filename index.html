@@ -82,9 +82,8 @@
     /* Generator Layout */
     .container {
       display: flex;
-      flex-direction: column;
       gap: 20px;
-      height: 100vh;
+      height: calc(100vh - 120px); /* Account for tabs and padding */
       overflow: hidden;
       padding: 10px;
       box-sizing: border-box;
@@ -180,17 +179,32 @@
       color: #856404;
     }
     /* Scale to fit screen height */
-    @media (max-height: 800px) {
-      #receipt {
-        transform: scale(0.8);
+    @media (min-width: 768px) {
+      .container {
+        flex-direction: row;
+      }
+      .receipt-section {
+        width: 65%;
+        height: 100%;
+        overflow-y: auto;
+      }
+      .form-section {
+        width: 35%;
+        height: 100%;
+        overflow-y: auto;
       }
     }
-    @media (min-height: 1080px) {
-      #receipt {
-        transform: scale(1);
-      }
+    /* Phone Mode: Top-Bottom */
+    .container.phone-mode {
+      flex-direction: column;
     }
 
+    .container.phone-mode .receipt-section,
+    .container.phone-mode .form-section {
+      width: 100%;
+      height: 50%;
+      overflow-y: auto;
+    }
     label {
       display: block;
       margin: 6px 0 3px;
@@ -505,6 +519,9 @@
 <div class="tabs">
   <button class="tab-btn active" onclick="openTab(event, 'generator')">📄 Receipt Generator</button>
   <button class="tab-btn" onclick="openTab(event, 'dashboard')">📊 Sales Dashboard</button>
+  <button id="layoutToggle" onclick="toggleLayout()" title="Switch Layout" style="background:#2196F3; color:white; padding:10px 12px; font-size:14px;">
+    📱↔️🖥️
+  </button>
 </div>
 
 <!-- Tab 1: Receipt Generator -->
@@ -2024,6 +2041,38 @@ function renderCatalogue() {
     }
   }
 
+  // Track current layout mode
+let isPhoneMode = false;
+
+// Toggle between phone and desktop mode
+function toggleLayout() {
+  const container = document.querySelector('.container');
+  isPhoneMode = !isPhoneMode;
+  
+  if (isPhoneMode) {
+    container.classList.add('phone-mode');
+    document.getElementById('layoutToggle').innerHTML = '🖥️→📱';
+    document.getElementById('layoutToggle').title = 'Switch to Desktop Mode';
+  } else {
+    container.classList.remove('phone-mode');
+    document.getElementById('layoutToggle').innerHTML = '📱↔️🖥️';
+    document.getElementById('layoutToggle').title = 'Switch Layout';
+  }
+}
+
+// Optional: Auto-desktop on wide screens
+function checkAutoLayout() {
+  if (window.innerWidth >= 768) {
+    document.querySelector('.container').classList.remove('phone-mode');
+    isPhoneMode = false;
+    document.getElementById('layoutToggle').innerHTML = '📱↔️🖥️';
+    document.getElementById('layoutToggle').title = 'Switch Layout';
+  }
+}
+
+// Call on load and resize
+window.addEventListener('load', checkAutoLayout);
+window.addEventListener('resize', checkAutoLayout);
 // Call on load and resize
 window.addEventListener("load", resizeReceipt);
 window.addEventListener("resize", resizeReceipt);
