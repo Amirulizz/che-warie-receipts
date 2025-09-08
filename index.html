@@ -27,9 +27,18 @@
       transition: right 0.3s ease;
       z-index: 1001;
       overflow-y: auto;
-      font-size: 10pt;
+      font-size: clamp(6pt, 2vw, 20pt);
     }
-
+    #editMenu input,
+    #editMenu textarea,
+    #editMenu select,
+    #editMenu label,
+    #editMenu details,
+    #editMenu summary,
+    #editMenu h2,
+    #editMenu button {
+      font-size: inherit !important;
+    }
     #editMenu.open {
       right: 0; /* Slide into view */
     }
@@ -65,13 +74,13 @@
       padding: 15px;
     }
     .form-section label, .form-section input, .form-section select, .form-section textarea {
-      font-size: 19pt;
+      font-size: clamp(9pt, 2vw, 11pt);
     }
   }
 
   @media (min-width: 1024px) {
     #editMenu {
-      font-size: 15pt;
+      font-size: clamp(9pt, 2vw, 11pt);
     }
   }
     /* Tabs */
