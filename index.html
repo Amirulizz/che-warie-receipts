@@ -10,7 +10,7 @@
       font-size: 10pt;
       margin: 0;
       padding: 20px;
-      background: #f5f5f5;
+      background: #5f5f5f;
       color: #333;
     }
     /* Slide-out Edit Menu */
@@ -37,18 +37,18 @@
     /* Edit Button (Stuck to right edge) */
     #editMenuToggle {
       position: fixed;
-      top: 50%;
+      top: 7%;
       right: 0;
       transform: translateY(-50%);
-      width: 40px;
-      height: 80px;
+      width: 35px;
+      height: 100px;
       background: #4CAF50;
       color: white;
       border: none;
       border-radius: 8px 0 0 8px;
       writing-mode: vertical-lr;
       text-orientation: mixed;
-      font-size: 12px;
+      font-size: 16px;
       font-weight: bold;
       cursor: pointer;
       z-index: 1002;
@@ -63,7 +63,7 @@
     .tabs {
       overflow: hidden;
       border-bottom: 1px solid #ccc;
-      background: #474747;
+      background: #5f5f5f;
       display: flex;
       width: 100%;
     }
@@ -75,12 +75,13 @@
       border: none;
       outline: none;
       cursor: pointer;
-      padding: 10px 0; /* Remove horizontal padding to allow flex spacing */
-      font-size: 10pt;
+      padding: 20px 0; /* Remove horizontal padding to allow flex spacing */
+      font-size: 15pt;
+      font-weight: bolder; 
       transition: 0.3s;
       border-radius: 8px 8px 0 0;
       color: white;
-      opacity: 0.8;
+      opacity: 1;
     }
 
     .tab-btn:hover {
@@ -137,8 +138,7 @@
     #receipt {
       width: 180%; /* Fill 80% of container width */
       min-height: 297mm;
-      max-height: 297mm
-      background: white;
+      background-color: #ffffff;
       padding: 25.4mm;
       box-shadow: 0 0 10px rgba(0,0,0,0.3);
       box-sizing: border-box;
@@ -307,6 +307,7 @@
       border: 1px solid #eee;
       border-radius: 4px;
     }
+
 
     /* Common Receipt Styles */
     .receipt-header {
@@ -489,6 +490,77 @@
       margin: 0 2px;
       font-size: 9pt;
     }
+
+    @media print {
+    /* Remove shadows and extra padding */
+    #receipt {
+      box-shadow: none;
+      border: none;
+      margin: 0;
+      padding: 25.4mm; /* Keep A4 margins */
+      width: 210mm;
+      min-height: 297mm;
+      background: white;
+      font-size: 10pt;
+      page-break-inside: avoid;
+    }
+
+    /* Fix logo size and alignment */
+    .logo {
+      width: 130px;
+      height: auto;
+      margin-right: 20px;
+    }
+
+    /* Align company details correctly */
+    .company-details {
+      text-align: left;
+      margin-left: 150px;
+      font-size: 10pt;
+    }
+
+    /* Ensure consistent spacing */
+    .receipt-title {
+      text-align: center;
+      margin: 15px 0;
+      font-size: 11pt;
+      font-weight: bold;
+    }
+
+    /* Fix table spacing */
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+    }
+
+    .items-table th,
+    .items-table td {
+      border: 1px solid #ddd;
+      padding: 5px;
+      text-align: center;
+    }
+
+    /* Make sure images don't get distorted */
+    .items-table img {
+      max-width: 50px;
+      height: auto;
+      object-fit: contain;
+    }
+
+    /* Hide edit menu and buttons on print */
+    #editMenuToggle,
+    #editMenu,
+    .form-section,
+    .actions {
+      display: none !important;
+    }
+
+    /* Force page break after receipt */
+    .receipt-footer {
+      page-break-after: always;
+    }
+  }
   </style>
 </head>
 <body>
@@ -1147,13 +1219,19 @@
       document.getElementById("docType").value = "receipt";
     }
     document.getElementById("docType").value = r.docType || "receipt";
+
+    document.getElementById("paymentMethod").value = r.paymentMethod || "";
+    document.getElementById("deliveryMethod").value = r.deliveryMethod || "";
+    document.getElementById("deliveryPrice").value = r.deliveryPrice || 0;
+    document.getElementById("remarks").value = r.remarks || "";
+
     items = r.items.map(item => ({...item}));
-    
-    updateDocType();
     renderItems();
-    renderModifySelect();
     updateReceiptInfo();
+    renderModifySelect();
     alert(`✅ Loaded receipt #${r.invoiceNo}`);
+    updateDocType();
+
   }
 
   function clearAllRecent() {
@@ -1204,6 +1282,7 @@
               box-sizing: border-box;
               margin: 0 auto;
               font-size: 10pt;
+              page-break-inside: avoid;
             }
             .receipt-header {
               display: flex;
