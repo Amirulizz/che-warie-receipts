@@ -17,8 +17,8 @@
     #editMenu {
       position: fixed;
       top: 0;
-      right: -320px; /* Hidden by default */
-      width: 300px;
+      right: -1620px; /* Hidden by default */
+      width: 600px;
       height: 100%;
       background: white;
       border-left: 2px solid #ccc;
@@ -59,6 +59,21 @@
     #editMenuToggle:hover {
       background: #45a049;
     }
+    @media (max-width: 768px) {
+    #editMenu {
+      font-size: 1%;
+      padding: 15px;
+    }
+    .form-section label, .form-section input, .form-section select, .form-section textarea {
+      font-size: 19pt;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    #editMenu {
+      font-size: 15pt;
+    }
+  }
     /* Tabs */
     .tabs {
       overflow: hidden;
