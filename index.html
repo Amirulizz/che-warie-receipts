@@ -4,37 +4,61 @@
   <meta charset="UTF-8">
   <title>Che Warie D Katering - Receipt Generator</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- PWA Manifest -->
-  <link rel="manifest" href="manifest.json">
-
-  <!-- Apple PWA Settings -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Receipts">
-  <link rel="apple-touch-icon" href="icon-192.png">
-
-  <!-- Theme Color -->
-  <meta name="theme-color" content="#4CAF50">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <style>
-    body, .tabs, .tab-btn, .form-section, details, label, input, textarea, select, button {
-      font-size: 20px !important;
-    }
-    /* Desktop Mode: 14px for everything EXCEPT receipt */
-    @media (min-width: 768px) {
-      body, .tabs, .tab-btn, .form-section, details, label, input, textarea, select, button {
-        font-size: 14px !important;
-      }
-    }
     body {
       font-family: Arial, sans-serif;
       font-size: 10pt;
       margin: 0;
       padding: 20px;
-      background: #474747;
+      background: #f5f5f5;
       color: #333;
     }
+    /* Slide-out Edit Menu */
+    #editMenu {
+      position: fixed;
+      top: 0;
+      right: -320px; /* Hidden by default */
+      width: 300px;
+      height: 100%;
+      background: white;
+      border-left: 2px solid #ccc;
+      box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+      padding: 20px;
+      transition: right 0.3s ease;
+      z-index: 1001;
+      overflow-y: auto;
+      font-size: 10pt;
+    }
 
+    #editMenu.open {
+      right: 0; /* Slide into view */
+    }
+
+    /* Edit Button (Stuck to right edge) */
+    #editMenuToggle {
+      position: fixed;
+      top: 50%;
+      right: 0;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 80px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 8px 0 0 8px;
+      writing-mode: vertical-lr;
+      text-orientation: mixed;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 1002;
+      box-shadow: -2px 0 5px rgba(0,0,0,0.2);
+      transition: background 0.2s;
+    }
+
+    #editMenuToggle:hover {
+      background: #45a049;
+    }
     /* Tabs */
     .tabs {
       overflow: hidden;
@@ -42,35 +66,23 @@
       background: #474747;
       display: flex;
       width: 100%;
-      height: 80px; /* Double the height */
     }
 
     .tab-btn {
+      flex: 1; /* Each tab takes equal space */
+      text-align: center;
       background-color: inherit;
       border: none;
       outline: none;
       cursor: pointer;
-      padding: 25px 16px; /* Increased vertical padding */
-      font-size: 14pt; /* Larger text */
+      padding: 10px 0; /* Remove horizontal padding to allow flex spacing */
+      font-size: 10pt;
       transition: 0.3s;
       border-radius: 8px 8px 0 0;
-      flex: 1; /* Stretch to fill width */
-      text-align: center;
       color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+      opacity: 0.8;
     }
-    /* Adjust padding in desktop mode */
-    .container:not(.phone-mode) .tab-btn {
-      padding: 10px 16px; /* Half padding */
-    }
-    .container:not(.phone-mode) .tab-btn {
-      padding: 10px 16px;
-      font-size: 12pt;
-      gap: 6px;
-    }
+
     .tab-btn:hover {
       background-color: #a7a7a7;
     }
@@ -97,71 +109,35 @@
     .container {
       display: flex;
       gap: 20px;
-      height: calc(100vh - 120px); /* Account for tabs and padding */
+      height: 90vh;
       overflow: hidden;
-      padding: 10px;
-      box-sizing: border-box;
     }
-    /* Desktop Mode: Half-height tabs */
-    .container:not(.phone-mode) .tabs {
-      height: 40px;
-    }
-    /* Edit Form - Improved Readability */
+
     .form-section {
-      flex: 1;
-      max-height: 100%;
+      width: 35%;
+      max-height: 95vh;
       overflow-y: auto;
       background: white;
       padding: 20px;
       border-radius: 8px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      font-size: 14pt; /* Larger font */
-    }
-
-    .form-section label {
-      display: block;
-      margin: 6px 0 3px;
-      font-weight: bold;
-      color: #333;
-    }
-
-    .form-section input[type="text"],
-    .form-section input[type="number"],
-    .form-section textarea,
-    .form-section select {
-      width: 90%; /* Less wide */
-      padding: 6px;
-      margin-top: 2px;
-      box-sizing: border-box;
-      font-size: 14pt;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-
-    .form-section button {
-      margin-top: 8px;
-      padding: 6px 12px;
-      cursor: pointer;
-      border: none;
-      border-radius: 4px;
-      font-size: 14pt;
     }
     .receipt-title[data-mode="quotation"] {
       color: #e91e63;
     }
     .receipt-section {
+      width: 180%;
       display: flex;
       justify-content: center;
       align-items: flex-start;
       overflow-y: auto;
       padding: 10px;
-      min-height: 0;
     }
 
     #receipt {
-      width: 95vw; /* Full width minus padding */
-      max-width: 210mm;
+      width: 180%; /* Fill 80% of container width */
       min-height: 297mm;
+      max-height: 297mm
       background: white;
       padding: 25.4mm;
       box-shadow: 0 0 10px rgba(0,0,0,0.3);
@@ -169,9 +145,8 @@
       position: relative;
       font-family: Arial, sans-serif;
       font-size: 10pt;
-      margin: 0 auto;
-      transform-origin: top center;
-      transition: transform 0.3s ease;
+      margin: 0 auto; /* Center horizontally */
+      max-width: 210mm; /* Keep A4 width limit */
     }
     .receipt-title[data-mode="quotation"] {
     color: #e91e63;
@@ -195,32 +170,17 @@
       background-color: #fff3cd;
       color: #856404;
     }
-    /* Scale to fit screen height */
-    @media (min-width: 768px) {
-      .container {
-        flex-direction: row;
-      }
+    @media (min-height: 1080px) and (min-width: 1920px) {
       .receipt-section {
-        width: 65%;
-        height: 100%;
-        overflow-y: auto;
-      }
-      .form-section {
-        width: 35%;
-        height: 100%;
-        overflow-y: auto;
+        transform: scale(0.95);
+        transform-origin: top center;
       }
     }
-    /* Phone Mode: Top-Bottom */
-    .container.phone-mode {
-      flex-direction: column;
-    }
-
-    .container.phone-mode .receipt-section,
-    .container.phone-mode .form-section {
-      width: 100%;
-      height: 50%;
-      overflow-y: auto;
+    @media (min-width: 1200px) {
+      #receipt {
+        width: 80%;
+        max-width: 210mm;
+      }
     }
     label {
       display: block;
@@ -536,9 +496,6 @@
 <div class="tabs">
   <button class="tab-btn active" onclick="openTab(event, 'generator')">📄 Receipt Generator</button>
   <button class="tab-btn" onclick="openTab(event, 'dashboard')">📊 Sales Dashboard</button>
-  <button id="layoutToggle" onclick="toggleLayout()" title="Switch Layout" style="background:#2196F3; color:white; padding:10px 12px; font-size:14px;">
-    📱↔️🖥️
-  </button>
 </div>
 
 <!-- Tab 1: Receipt Generator -->
@@ -598,7 +555,7 @@
         </table>
         <div class="totals">
           <p><strong>Subtotal:</strong> RM <span id="rSubtotal">0</span></p>
-          <p><strong>Delivery:</strong> RM <span id="rTotal">0</span></p>
+          <p><strong>Delivery:</strong> RM <span id="rDeliTotal">0</span></p>
           <p class="grand-total"><strong>Total:</strong> RM <span id="rTotal">0</span></p>
         </div>
         <div class="remarks">
@@ -611,8 +568,11 @@
       </div>
     </div>
 
+    <!-- Edit Menu Toggle Button -->
+    <button id="editMenuToggle" onclick="toggleEditMenu()">Edit</button>
+
     <!-- RIGHT: Form Section -->
-    <div class="form-section">
+  <div id="editMenu">
       <h2 style="font-size: 12pt; margin: 0 0 10px;">Edit Receipt</h2>
       <details open>
         <summary>📑 Invoice Details</summary>
@@ -696,6 +656,7 @@
       </div>
     </div>
   </div>
+  </div>
 </div>
 
 <!-- Tab 2: Sales Dashboard -->
@@ -750,6 +711,29 @@
     <div style="margin-top: 20px; text-align: right;">
       <button onclick="exportDashboardPDF()" style="background: #2192F3; padding: 8px 16px; font-size: 10pt;">📄 Export Dashboard as PDF</button>
     </div>
+  </div>
+</div>
+
+
+ <!-- Add Item from Catalogue Popup -->
+<div id="addItemPopup" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:90%; max-width:400px; background:white; border:2px solid #333; border-radius:10px; padding:20px; box-shadow:0 4px 20px rgba(0,0,0,0.3); z-index:1005; font-size:10pt;">
+  <h3>Add Product</h3>
+  <div style="text-align:center; margin-bottom:15px;">
+    <img id="addItemPopupImage" src="" alt="Product" style="max-width:100px; height:100px; object-fit:contain; border:1px solid #ddd;">
+    <p><strong id="addItemPopupName"></strong></p>
+  </div>
+  <label>Quantity:
+    <input type="number" id="addItemPopupQty" value="1" min="1" style="width:100%; padding:5px; margin-top:5px;">
+  </label>
+  <label>Unit Price (RM):
+    <input type="number" id="addItemPopupPrice" value="0" step="0.01" style="width:100%; padding:5px; margin-top:5px;">
+  </label>
+  <label>Notes (Size, variant, etc.):
+    <input type="text" id="addItemPopupNotes" placeholder="e.g. Large, Spicy, No sugar" style="width:100%; padding:5px; margin-top:5px;">
+  </label>
+  <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
+    <button onclick="closeAddItemPopup()" style="padding:8px 16px;">Cancel</button>
+    <button onclick="confirmAddItemFromCatalogue()" style="background:#4CAF50; color:white; border:none; padding:8px 16px;">Add to Receipt</button>
   </div>
 </div>
 
@@ -1042,6 +1026,9 @@
       const lines = remarksText.split('\n').filter(line => line.trim() !== "");
       const numberedLines = lines.map((line, i) => `${i + 1}. ${line.trim()}`).join('<br>');
       document.getElementById("rRemarks").innerHTML = numberedLines;
+    }
+    if (document.getElementById("editMenu").classList.contains("open")) {
+      syncToEditMenu();
     }
   }
 
@@ -1631,12 +1618,18 @@
 
   function selectCatalogueItem(index) {
     const item = catalogue[index];
-    document.getElementById("itemName").value = item.name;
-    document.getElementById("itemPrice").value = item.price;
-    document.getElementById("itemImage").value = item.image || "";
-    editIndex = -1;
-    document.getElementById("modifyItemSelect").value = "-1";
-    document.getElementById("addBtn").textContent = "Add Item";
+    // Fill the popup with product info
+  document.getElementById("addItemPopupName").textContent = item.name;
+  document.getElementById("addItemPopupImage").src = item.image || "https://via.placeholder.com/100x100?text=No+Image";
+  document.getElementById("addItemPopupPrice").value = item.price; // Pre-fill price
+  document.getElementById("addItemPopupQty").value = 1;             // Default quantity
+  document.getElementById("addItemPopupNotes").value = "";         // Clear notes
+
+    // Store the item data temporarily
+    window.pendingCatalogueItem = item;
+
+    // Show popup
+    document.getElementById("addItemPopup").style.display = "block";
     closeCataloguePopup();
   }
 
@@ -2045,54 +2038,93 @@ function renderCatalogue() {
   function filterCatalogue() {
     renderCatalogue();
   }
-  function resizeReceipt() {
-    const receipt = document.getElementById("receipt");
-    const containerHeight = document.querySelector(".receipt-section").clientHeight;
-    const a4HeightInPx = 297 * 3.78; // ~A4 height in pixels
 
-    if (containerHeight < a4HeightInPx) {
-      const scale = containerHeight / a4HeightInPx;
-      receipt.style.transform = `scale(${Math.max(scale * 0.9, 0.6)})`;
+  // Toggle the edit menu
+  function toggleEditMenu() {
+    const menu = document.getElementById("editMenu");
+    const isOpen = menu.classList.contains("open");
+
+    if (isOpen) {
+      menu.classList.remove("open");
+      document.getElementById("editMenuToggle").textContent = "Edit";
     } else {
-      receipt.style.transform = "scale(1)";
+      // Sync current values to menu fields
+      menu.classList.add("open");
+      document.getElementById("editMenuToggle").textContent = "Close";
     }
   }
 
-  // Track current layout mode
-let isPhoneMode = false;
+  // Sync current form values to edit menu fields
+  function syncToEditMenu() {
+    document.getElementById("menuDocType").value = document.getElementById("docType").value;
+    document.getElementById("menuInvoiceNo").value = document.getElementById("invoiceNo").value;
+    document.getElementById("menuInvoiceDate").value = document.getElementById("invoiceDate").value;
+    document.getElementById("menuPaymentMethod").value = document.getElementById("paymentMethod").value;
+    document.getElementById("menuDeliveryMethod").value = document.getElementById("deliveryMethod").value;
+    document.getElementById("menuDeliveryPrice").value = document.getElementById("deliveryPrice").value;
 
-// Toggle between phone and desktop mode
-function toggleLayout() {
-  const container = document.querySelector('.container');
-  isPhoneMode = !isPhoneMode;
-  
-  if (isPhoneMode) {
-    container.classList.add('phone-mode');
-    document.getElementById('layoutToggle').innerHTML = '🖥️→📱';
-    document.getElementById('layoutToggle').title = 'Switch to Desktop Mode';
-  } else {
-    container.classList.remove('phone-mode');
-    document.getElementById('layoutToggle').innerHTML = '📱↔️🖥️';
-    document.getElementById('layoutToggle').title = 'Switch Layout';
+    document.getElementById("menuCustomerName").value = document.getElementById("customerName").value;
+    document.getElementById("menuCustomerAddress").value = document.getElementById("customerAddress").value;
+    document.getElementById("menuCustomerTel").value = document.getElementById("customerTel").value;
+    document.getElementById("menuCustomerEmail").value = document.getElementById("customerEmail").value;
+
+    document.getElementById("menuRemarks").value = document.getElementById("remarks").value;
   }
-}
+  // Close edit menu if clicked outside
+  document.addEventListener("click", function(e) {
+    const menu = document.getElementById("editMenu");
+    const toggle = document.getElementById("editMenuToggle");
+    if (!menu.contains(e.target) && !toggle.contains(e.target) && menu.classList.contains("open")) {
+      menu.classList.remove("open");
+      document.getElementById("editMenuToggle").textContent = "Edit";
+    }
+  });
 
-// Optional: Auto-desktop on wide screens
-function checkAutoLayout() {
-  if (window.innerWidth >= 768) {
-    document.querySelector('.container').classList.remove('phone-mode');
-    isPhoneMode = false;
-    document.getElementById('layoutToggle').innerHTML = '📱↔️🖥️';
-    document.getElementById('layoutToggle').title = 'Switch Layout';
+  // Close the add-item popup
+  function closeAddItemPopup() {
+    document.getElementById("addItemPopup").style.display = "none";
+    window.pendingCatalogueItem = null;
   }
-}
 
-// Call on load and resize
-window.addEventListener('load', checkAutoLayout);
-window.addEventListener('resize', checkAutoLayout);
-// Call on load and resize
-window.addEventListener("load", resizeReceipt);
-window.addEventListener("resize", resizeReceipt);
+  // Confirm and add the item to the receipt
+  function confirmAddItemFromCatalogue() {
+    const item = window.pendingCatalogueItem;
+    if (!item) return;
+
+    const qty = parseInt(document.getElementById("addItemPopupQty").value);
+    const price = parseFloat(document.getElementById("addItemPopupPrice").value);
+    const notes = document.getElementById("addItemPopupNotes").value.trim();
+
+    if (isNaN(qty) || qty <= 0) {
+      alert("Please enter a valid quantity.");
+      return;
+    }
+    if (isNaN(price) || price < 0) {
+      alert("Please enter a valid price.");
+      return;
+    }
+
+    // Create final name with notes
+    const finalName = notes ? `${item.name} (${notes})` : item.name;
+
+    // Add to items list
+    items.push({
+      name: finalName,
+      qty: qty,
+      price: price,
+      image: item.image || ""
+    });
+
+    // Update UI
+    renderItems();
+    renderModifySelect();
+
+    // Close popup
+    closeAddItemPopup();
+
+    // Optional: give feedback
+    alert(`✅ Added ${qty} × ${finalName}`);
+  }
 </script>
 </body>
 </html>
